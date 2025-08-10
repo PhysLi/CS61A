@@ -1,0 +1,14 @@
+# .gitignore 示例（针对 Python / VS Code）
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+env/
+venv/
+.env
+.ipynb_checkpoints/
+.vscode/
+.DS_Store
+.pytest_cache/
+*.egg-info/
