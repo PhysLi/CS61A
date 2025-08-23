@@ -69,10 +69,10 @@ def take_turn(num_rolls, player_score, opponent_score, dice=six_sided):
     # BEGIN PROBLEM 3
     "*** YOUR CODE HERE ***"
     if(num_rolls == 0):
-        player_score += boar_brawl(player_score, opponent_score)
+        score = boar_brawl(player_score, opponent_score)
     else:
-        player_score += roll_dice(num_rolls)
-    return player_score
+        score = roll_dice(num_rolls, dice)
+    return score
     # END PROBLEM 3
 
 
@@ -126,7 +126,7 @@ def sus_update(num_rolls, player_score, opponent_score, dice=six_sided):
     """
     # BEGIN PROBLEM 4
     "*** YOUR CODE HERE ***"
-    return sus_points(simple_update(num_rolls, player_score, opponent_score))
+    return sus_points(simple_update(num_rolls, player_score, opponent_score, dice))
     # END PROBLEM 4
 
 
@@ -167,10 +167,10 @@ def play(strategy0, strategy1, update, score0=0, score1=0, dice=six_sided, goal=
     while(max(score0, score1) < goal):
         if(who == 0):
             num_rolls = strategy0(score0, score1)
-            score0 = sus_update(num_rolls, score0, score1)
+            score0 = update(num_rolls, score0, score1, dice)
         else:
             num_rolls = strategy1(score1, score0)
-            score1 = sus_update(num_rolls, score1, score0)
+            score1 = update(num_rolls, score1, score0, dice)
         who = 1 - who
     "*** YOUR CODE HERE ***"
     # END PROBLEM 5
@@ -212,7 +212,7 @@ def catch_up(score, opponent_score):
 
     >>> catch_up(9, 4)
     5
-    >>> strategy(17, 18)
+    >>> catch_up(17, 18)
     6
     """
     if score < opponent_score:
@@ -252,7 +252,7 @@ def is_always_roll(strategy, goal=GOAL):
     # END PROBLEM 7
 
 
-def make_averaged(original_function, times_called=1000):
+def make_averaged(original_function, times_called=100):
     """Return a function that returns the average value of ORIGINAL_FUNCTION
     called TIMES_CALLED times.
 
@@ -275,7 +275,7 @@ def make_averaged(original_function, times_called=1000):
     # END PROBLEM 8
 
 
-def max_scoring_num_rolls(dice=six_sided, times_called=1000):
+def max_scoring_num_rolls(dice=six_sided, times_called=100):
     """Return the number of dice (1 to 10) that gives the maximum average score for a turn.
     Assume that the dice always return positive outcomes.
 
@@ -285,11 +285,13 @@ def max_scoring_num_rolls(dice=six_sided, times_called=1000):
     """
     # BEGIN PROBLEM 9
     "*** YOUR CODE HERE ***"
-    max, max_num = 0
-    for i in range(10):
-        avg_score = make_averaged(roll_dice, times_called)(i)
+    max, max_num = 0, 0
+    i = 1
+    while(i <= 10):
+        avg_score = make_averaged(roll_dice, times_called)(i, dice)
         if(avg_score > max):
             max, max_num = avg_score, i
+        i += 1
     return max_num
     # END PROBLEM 9
 
@@ -317,13 +319,20 @@ def run_experiments():
     """Run a series of strategy experiments and report results."""
     six_sided_max = max_scoring_num_rolls(six_sided)
     print("Max scoring num rolls for six-sided dice:", six_sided_max)
+    # print("always_roll(1) win rate:", average_win_rate(always_roll(1)))  # near 0.5
+    # print("always_roll(2) win rate:", average_win_rate(always_roll(2)))  # near 0.5
+    # print("always_roll(3) win rate:", average_win_rate(always_roll(3)))
+    # print("always_roll(4) win rate:", average_win_rate(always_roll(4)))
+    # print("always_roll(5) win rate:", average_win_rate(always_roll(5)))  # near 0.5
+    # print("always_roll(6) win rate:", average_win_rate(always_roll(6)))  # near 0.5
+    # print("always_roll(7) win rate:", average_win_rate(always_roll(7)))
+    # print("always_roll(8) win rate:", average_win_rate(always_roll(8)))
+    # print("always_roll(9) win rate:", average_win_rate(always_roll(9)))
+    # print("always_roll(10) win rate:", average_win_rate(always_roll(10)))
+    # print("catch_up win rate:", average_win_rate(catch_up))
+    
 
-    print("always_roll(6) win rate:", average_win_rate(always_roll(6)))  # near 0.5
-    print("catch_up win rate:", average_win_rate(catch_up))
-    print("always_roll(3) win rate:", average_win_rate(always_roll(3)))
-    print("always_roll(8) win rate:", average_win_rate(always_roll(8)))
-
-    print("boar_strategy win rate:", average_win_rate(boar_strategy))
+    # print("boar_strategy win rate:", average_win_rate(boar_strategy))
     print("sus_strategy win rate:", average_win_rate(sus_strategy))
     print("final_strategy win rate:", average_win_rate(final_strategy))
     "*** You may add additional experiments as you wish ***"
@@ -359,8 +368,47 @@ def final_strategy(score, opponent_score):
     *** YOUR DESCRIPTION HERE ***
     """
     # BEGIN PROBLEM 12
+    def make_threshold_strategy(threshold, optimal_base):
+        def sus_strategy(score, opponent_score):
+            """This strategy returns 0 dice when rolling 0 increases the score by at least
+            THRESHOLD points, and returns NUM_ROLLS otherwise. Consider both the Boar Brawl and
+            Suss Fuss rules."""
+            # BEGIN PROBLEM 11
+            if(sus_update(0, score, opponent_score) - score >= threshold):
+                return 0
+            return  optimal_base   
+        return sus_strategy
     
-    return 6  # Remove this line once implemented.
+    def winner_current(strategy0, strategy1, score0, score1):
+        """Return 0 if strategy0 wins against strategy1, and 1 otherwise."""
+        score0, score1 = play(strategy0, strategy1, sus_update, score0, score1)
+        if score0 > score1:
+            return 0
+        else:
+            return 1
+    # If current is player0
+
+    base_num, max_win_rate, optimal_base = 1, 0, 0
+    while(base_num <= 10):
+        print(base_num)
+        win_rate_as_player_0 = 1 - make_averaged(winner_current)(always_roll(base_num), always_roll(6), score, opponent_score)
+        win_rate_as_player_1 = make_averaged(winner_current)(always_roll(6), always_roll(base_num), opponent_score, score)
+        win_rate = (win_rate_as_player_0 + win_rate_as_player_1) / 2
+        if(win_rate > max_win_rate):
+            max_win_rate, optimal_base = win_rate, base_num
+        base_num += 1
+
+    threshold, max_win_rate, optimal_threshold = 1, 0, 0
+    while(threshold <= 25):
+        print(threshold)
+        win_rate_as_player_0 = 1 - make_averaged(winner_current)(make_threshold_strategy(threshold, optimal_base), always_roll(6), score, opponent_score)
+        win_rate_as_player_1 = make_averaged(winner_current)(always_roll(6), make_threshold_strategy(threshold, optimal_base), opponent_score, score)
+        win_rate = (win_rate_as_player_0 + win_rate_as_player_1) / 2
+        if(win_rate > max_win_rate):
+            max_win_rate, optimal_threshold = win_rate, threshold
+        threshold += 1
+    
+    return make_threshold_strategy(optimal_threshold, optimal_base)(score, opponent_score)
     # END PROBLEM 12
 
 
