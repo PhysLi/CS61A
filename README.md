@@ -159,3 +159,190 @@ def square(x):
 ```python
 square = trace1(square)
 ```
+
+## Lecture 9: Recursion
+
+### 递归函数
+递归函数定义为在函数体中调用自身的函数，主要结构为一个判断语句，包含
+1. base case: 问题划归到最简的情形，不调用自身，直接返回值；
+2. recursive case: 相当于数列的递推公式，$a(n)=f(n,a(n-1))$
+
+```python
+def fact(n):
+    if(n == 0):
+        return 0
+    else:
+        return n * fact(n)
+```
+
+## Mutual recursion
+递归是通过将问题规模逐渐减小，当减到最小时问题解决；但若不同规模下问题的解有不同形式，就需要用到互递归。
+- 例：给定一串数字，从右向左数第偶数个数字乘2（若乘2后大于10则将结果的个位和十位相加）、第奇数个数字不变，再把变换后的数字序列各位相加。
+    ```python
+    def split(n):
+        return n // 10, n % 10
+
+    def sum_digits(n):
+        if(n < 10):
+            return n
+        else:
+            rest, last = split(n)
+            return sum_digits(rest) + last
+
+    def luhn_sum(n):
+        if(n < 10):
+            return n
+        else:
+            rest, last = split(n)
+            return luhn_sum_double(rest) + last
+
+    def luhn_sum_double(n):
+        rest, last = split(n)
+        if(n < 10):
+            return sum_digits(2 * n)
+        else:
+            rest, last = split(n)
+            return luhn_sum(rest) + sum_digits(2 * n)
+    ```
+- 反向递归：有时可能需要将问题从1开始逐渐扩大到给定的 $n$，这时由于原始函数只能以终点为参数，无法递归，则可定义以起点为参数的辅助函数
+    ```python
+    def interleaved_sum(n, odd_func, even_func):
+        """Compute the sum odd_func(1) + even_func(2) + odd_func(3) + ..., up
+        to n.
+
+        >>> identity = lambda x: x
+        >>> square = lambda x: x * x
+        >>> triple = lambda x: x * 3
+        >>> interleaved_sum(5, identity, square) # 1   + 2*2 + 3   + 4*4 + 5
+        29
+        """
+        def helper(k):
+            if k == n:
+                return odd_func(k)
+            elif k == n - 1:
+                return odd_func(k) + even_func(k + 1)
+            else:
+                return odd_func(k) + even_func(k + 1) + helper(k + 2)
+        return helper(1)
+    ```
+- 若限制不能给函数命名还要实现递归，则可以把函数名称放到lambda表达式的参数中：
+    ```python
+    lambda n: 1 if n == 1 else n * (lambda x, fact: 1 if x == 1 else x * fact(x - 1, fact))(n - 1, lambda x, fact: 1 if x == 1 else x * fact(x - 1, fact))
+
+    ```
+
+## Lecture 10: Tree recursion
+当在递归函数中不只一次调用函数本身时，调用会形成树状结构（每次调用内部又有多个调用），称为树状递归。
+- 计数配分问题：将$n$个球分为多份，每份不多于$m$个，有多少种分法：
+    ```python
+    def counting_partition(n, m):
+        if(n == 0):
+            return 1
+        elif(n < 0):
+            return 0
+        elif(m == 0):
+            return 0
+        else:
+            return counting_partition(n - m, m) + counting_partition(n, m - 1)
+    ```
+
+## Lecture 11: Sequences
+Sequence指一系列变量类型。
+### List
+- list `[]` 的加法代表拼接，乘法代表重复
+- `in`和`not in`都是双操作数的container operator，判断某元素是否在序列中，返回Boolian类型。
+
+### Range
+- range类型也是序列的一种，特指连续整数序列，含头不含尾：`range(2, 5)`
+- 可以通过调用 `list()`函数来将其它序列变量转换为list
+
+### For语句
+- `for`语句和container`in`相伴而生，它本质并不是循环，而是遍历序列元素，很多情况下不需要索引，且可以在`for`语句的header直接序列解包：
+    ```python
+    pairs = [[1, 2], [2, 2]]
+    x, y = pairs
+    for x, y in pairs:
+        print(x + y)
+    ```
+- list comprehension: 可以在list中用for语句从其它list创建该list，如
+    ```python
+    odds = [1, 3, 5, 7, 9]
+    [x + 1 for x in odds if 25 % x == 0]
+    ```
+
+
+## Lecture 12 Container
+- 序列聚合：函数输入序列，输出单个值，称为序列聚合。
+    - `sum`函数：`sum(iterable[, start])`（start决定了`+` operator如何重载，默认为0，即默认为数字加法）
+        ```python
+        >>> sum([2, 3, 4], 5)
+        14
+        >>> sum([[2, 3],[4]], [])
+        [2, 3, 4]
+        ```
+    - `max`函数：`max(iterable[, key = func])`不仅可以求最大值，还可以求`key`函数的极值点
+        ```python
+        >>> max([2, 3, 4], lambda x: - (x - 3) ^ 2)
+        3
+        ```
+    - `all`函数：对iterable参数中所有值作用`bool()`函数（返回该值对应的boolean context），起到`AND`的作用
+        ```python
+        >>> all([1, 2, 3])
+        True
+        >>> all([0, 1])
+        False
+        ```
+    
+- String:`''`或`""`，也是sequence类型
+    ```python
+    >>> 'here' in 'where'
+    True
+    >>> [1, 2] in [1, 2, 3]
+    False
+    ```
+- Dictionary：键值对，`Dic = {key1: value1, key2: value2}`（键和值都可以是任意类型，但键不能是列表或字典，键不能重复），索引`Dic[key1]`；是键和值的序列
+    ```python
+    >>> list(Dic)
+    [key1, key2]
+    >>> Dic.values()
+    dict_values([value1, value2])
+    ```
+    - Dictionary comprehension: 可以通过for语句构建字典
+        ```python
+        {key[i]: value[i] for i in range(n) if i // 2}
+        
+
+## Lecture 13: Data abstraction
+- 数据抽象是为了将数据的表示和使用隔离开。可以看到下面的例子分别将有理数实现为列表和函数，但不改变其操作方式。
+```python
+### Abs Level 1: 创建数据
+from fractions import gcd
+def rational(n, d): # constructor（抽象数据类型的构造器）
+    return [n // gcd(n, d), d // gcd(n, d)]
+def numer(x): # selector
+    return x[0]
+def denom(x): # selector
+    return x[1]
+
+def rational(n, d): # constructor（抽象数据类型的构造器）
+    def select(name):
+        if name == 'n':
+            return n
+        elif name == 'd':
+            return d
+    return select
+def numer(x): # selector
+    return x('n')
+def denom(x): # selector
+    return x('d')
+
+### Abs Level 2: 操作数据
+def mul_rational(x, y):
+    return rational(numer(x) * numer(y), denom(x) * denom(y))
+def add_rational(x, y):
+    pass
+def equal_rational(x, y):
+    pass
+```
+
+## Lecture 14: Tree
