@@ -175,7 +175,7 @@ def fact(n):
         return n * fact(n)
 ```
 
-## Mutual recursion
+### Mutual recursion
 递归是通过将问题规模逐渐减小，当减到最小时问题解决；但若不同规模下问题的解有不同形式，就需要用到互递归。
 - 例：给定一串数字，从右向左数第偶数个数字乘2（若乘2后大于10则将结果的个位和十位相加）、第奇数个数字不变，再把变换后的数字序列各位相加。
     ```python
@@ -346,3 +346,132 @@ def equal_rational(x, y):
 ```
 
 ## Lecture 14: Tree
+- 树有一个root label和一些branches，每一个branch都是一个tree，所以可以递归构造tree。
+- 逆序递归：不对递归函数的返回值做操作，而是直接返回（即最后一个递归返回值就是最终结果），利用参数将递归变量传递进去
+    ```python
+    def fact_times(n, k = 1):
+        if n == 0:
+            return k
+        else:
+            return fact_times(n - 1, k * n)
+    fact_times(n, 1)
+    ```
+
+## Lecture 15: Mutability
+### 对象(object)
+- 有属性(attribute，用dot operator`.`来调用)；若attribute是函数，则称为方法(method)
+- python中的每隔值都是对象，有attribute。
+    ```python
+    # String
+    s.upper()
+    s.lower()
+    ```
+- 某种对象的抽象称为类(class)，类是一类变量，可以作为参数或返回值
+
+### 变易(mutability)
+- 对象分为可变类型(mutable type，如list, dictionary，可变类型的对象不能作为dictionary的key)和不可变类型(immutable type，如tuple)。可变变量的attribute可以被改变，不可变变量反之。
+    ```python
+    # dictionary
+    d.pop['key']
+    # list
+    l.pop()
+    l.append()
+    ```
+    - 用一个对象对另一个对象赋值，效果是两个name都被bind到同一个对象（即指向同一个内存地址，可以由`is`operator来判断），并不会创建一个新对象（但对sequence进行切片会创建新的对象，更改后新对象的元素不会更改原对象的元素）。
+        ```python
+        >>> a = b
+        >>> a is b
+        True
+        ```
+    - 函数的变量的默认值是作为一个变量的函数的一部分，有固定的内存地址，所以若是可变类型，则默认值会改变
+        ```python
+        def f(s = []):
+            s.append(1)
+            return len(s)
+        ```
+    - 不可变类型：元组(tuple)
+        ```python
+        a = (1,)
+        b = (1, 2)
+        tuple([1, 2, 3])
+        >>> (1, 2) + (3, 4)
+        (1, 2, 3, 4)
+        ```
+- 希望在函数中实现可变的值和固定的局部状态，可以用高阶函数来实现（相当于给了高阶函数一个context，让它能够知道改变后的状态
+    ```python
+    def make_withdraw_list(balance):
+        b = [balance]
+        def withdraw(amount):
+            if amount > b[0]:
+                return 'insufficient'
+            else:
+                b[0] -= amount
+                return b[0]
+        return withdraw
+    ```
+    该函数可以记住减去`amount`之后的剩余`balance`。
+## Lecture 16: Iterator
+- Container, Sequence和iterable（可迭代对象）的区别：
+    - container指所有能存放多个元素的数据结构，可以有序也可以无序
+    - sequence是有序的container
+    - interable是指所有能被`for`遍历的对象，包括container，sequence和iterator；
+        - iterator可以由任何iterable通过`iter()`构造得到（可以看作基于原来的iterable构造了一个链表），通过`next()`方法来得到当前值，同时iterator中自带的“指针”移动到下个地址上
+        - iterator是mutable的；若其基于所构造的iterable长度改变，则该iterator不能再使用；但若长度不变，只是值改变，则可以继续使用。
+- Iterator的method一般是惰性计算的，即不调用`next()`不计算
+    ```python
+    map(func, iterable) #返回Iterator，指向func(iterable)
+    filter(func, iterable) #返回Iterator，指向func(iterable)  == True的iterable元素组成的新iterable
+    zip(first_iter, second_iter[, third_iter, ..]) #返回Iterator，指向两个iterable通过笛卡尔积生成的tuple组成的iterable，返回的Iterator长度等于传入的最短iterable的长度
+    reversed(iterable) #返回Iterator，指向iterable反向的iterable
+    list(iterable), tuple(iterable), sorted(iterable) #分别基于iterable构造list，tuple和sorted list
+    ```
+- 使用Iterator是为了当原始数据的数据类型改变（如从list变为tuple）时不影响后续程序（相当于通过构建链表实现了一层抽象隔离。
+
+## Lecture 17: Generator
+- Generator是Iterator的一种，由generator function构造；generator function和普通函数的区别在于使用了`yield`关键词，返回generator。对generator使用`next()`时调用generator function，到下一个`yield`暂停，下次使用`next()`时会继续运行（即实现了可暂停的函数）。
+    ```python
+    def evens(start, end):
+        even = start + (start % 2)
+        while even < end:
+            yield even
+            even += 2
+    ```
+- generator function可以从其它iterable生成generator，使用`yield from`语句：
+    ```python
+    def a_then_b(iterable_a, iterable_b):
+        yield from iterable_a
+        yield from iterable_b
+    ```
+- 使用generator function实现整数partition，返回一个generator，其每一项是一个字符串，字符串内容是整数的某种分割（好处是如果分割方式很多，但不想全部得到，可以节省时间。
+    ```python
+    def partitions(n, m):
+        if n > 0 and m > 0:
+            if n == m:
+                yield str(m)
+            for p in partitions(n - m, m):
+                yield p + ' + ' + str(m)
+            yield from partions(n, m - 1)
+    ```
+## Lecture 18: Objects
+- 希望把庞大的程序分成一些模块，将抽象的数据类型和它们的相互作用行为绑定起来形成类（类也是对象，由类生成的称为实例）。
+- user defined class
+    ```python
+    class Account:
+        company = 'Visa'
+        def __init__(self, account_holder):
+            self.balance = 0
+            self.holder = account_holder
+        def deposit(self, amount):
+            self.balance += amount
+            return self.balance
+    ```
+    - 用类名来创建实例（构造方法），如`list(),tuple()`
+    - 调用method时，`self`变量通过`.`operator传入。
+    - attribute可以直接在外部用赋值语句改变，也可以直接在外部添加attribute(mutable type，无论是class attribute还是instance attribute)
+    - 用`is, is not`operator来判断两个名字是否指向同一个对象
+
+
+## Lecture 19: Attributes
+- class attribute和instance attribute的区别：上述的`company`是class attribute，只在类模板中存储，不构造实例时也可以通过`Account.company`获取，对于由其创建的所有实例都相同；`self.balance`是instance attribute，只有创建实例时才生成。
+    - 用`.`获取attribute时先评估`.`左侧的表达式，先在实例中寻找该attribute，找不到再去类模板中寻找。instance attribute和class attribute可以有共同的名字，改变class attribute不会改变同名的instance attribute
+    - 作为class attribute的method就是function，需要显式地传入`self`参数；作为instance attribute的method称为bound method，`.`operator隐式地传入了`self`参数。
