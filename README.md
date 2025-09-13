@@ -475,3 +475,206 @@ def equal_rational(x, y):
 - class attribute和instance attribute的区别：上述的`company`是class attribute，只在类模板中存储，不构造实例时也可以通过`Account.company`获取，对于由其创建的所有实例都相同；`self.balance`是instance attribute，只有创建实例时才生成。
     - 用`.`获取attribute时先评估`.`左侧的表达式，先在实例中寻找该attribute，找不到再去类模板中寻找。instance attribute和class attribute可以有共同的名字，改变class attribute不会改变同名的instance attribute
     - 作为class attribute的method就是function，需要显式地传入`self`参数；作为instance attribute的method称为bound method，`.`operator隐式地传入了`self`参数。
+- 可以使用`hasattr(<object>,'name')`来判断某个对象是否有某个attribute。
+
+## Lecture 20: Inheritance
+### inheritance
+当某个类型是另一个类型的特殊化时，可以使用类继承：
+```python
+class <name>(<base class>):
+    <suite>
+```
+子类具有基类的所有attribute，也可以overwrite基类的attribute。
+> 所以attribute的创建和调用关系为：instance attribute可以overwrite class attribute，subclass attribute可以overwrite base class attribute。当调用attribute时，首先在instance中查找，找不到的话去class中查找，再找不到则去base class中查找。已被覆盖的attribute也可以被访问，只是需要直接用类名或基类名来访问。
+
+
+### 多重继承(multiple inheritance)
+多重继承指的是某个类有多个基类，只需要在定义class时指定多个基类即可。若继承的多个基类有相同名称的attribute，则优先继承先指定的（左侧的）类的attribute。
+
+
+### composition
+composition指某个class以其它class（或instance）作为attribute，表示包含关系；而inheritance表示一般类和特殊类关系。
+
+## Lecture 21: Representation
+### String representation
+- python中所有object都有两种string representation
+    1. `str()`是给人看的string rep
+    2. `repr()`是给解释器看的，是一个python表达式（称为这个object的canonical string representation，即在python interactive mode中调用object时自动打印的string），满足`eval(repr(object)) == object`。
+- F-string：string合成的方法，允许在string中插入表达式（会将表达式的`str()` string插入到整个string中），如`f'1 + 1 == {1 + 1}'`
+
+### 多态函数(polymorphic functions)
+多态函数指某个函数适用于多个数据类型（即同时作为多个object的method，如`str()`,`repr()`,`add()`，其同时定义在多个object上，于是可以根据传入的参数不同来决定函数行为不同），如
+```python
+class usr_defined:
+    def __repr__(self):
+        return "<class usr_defined>"
+    def __str__(self):
+        return "usr_defined"
+```
+> 特殊的method名称：python中有一些特殊的method名称，如`__init__()`,`__repr__()`,`__add__()`,`__radd__()`,`__bool__()`,`__float__()`都在名称前后有`__`，其含义只是表示这是一个特殊的method。
+
+> 接口(interface)：面向对象编程的核心是对象之间的信息传递，信息传递通过互相调用attribute来实现，而多态函数使得不同对象能够对相同信息做出不同响应，是信息传递的重要方法，所以也称为接口。
+
+
+## Lecture 22: Composition
+### 链表(linked list)
+链表定义为：每个链表可能是空值，或者包含当前值以及一个链表（递归定义，类似树）./
+```python
+class Link:
+    empty = ()
+    def __init__(self, first, rest = empty):
+        assert rest is Link.empty or isinstance(rest, Link)
+        self.first = first
+        self.rest = rest
+```
+> 由于链表的`rest`attribute是`Link`instance类型，所以这样定义的链表属于class composition
+
+## Lecture 23: Efficiency
+- 由于python的所有数据类型本质上都是object，所以理论上都可以添加attribute：
+    ```python
+    def count(f):
+        def counted(n):
+            counted.call_count += 1
+        return f(n)
+        counted.call_count = 0
+        return count
+    ```
+    可以返回某个函数 `f`调用了多少次。其中 `def count(f)`类似于定义了一个类。
+- 记忆化(Memoization)：可以通过创建缓存的方式来加速程序
+    ```python
+    def memo(f):
+        cache = {}
+        def memoized(n):
+            if n not in cache:
+                cache[n] = f(n)
+            return cache[n]
+        return memoized
+    ```
+    需要 `f`为纯函数。
+- 时间复杂度：由高到低一般分为指数、二次、线性、对数。用 $\Theta()$ 代表上界和下界均为该复杂度，用 $O()$ 表示上界是该复杂度。
+
+- 空间复杂度：值和框架(frame)都会占用内存。只有当前依然存在的frame（称为active environment中的frame，如正在调用尚未返回的函数）占用内存，其它frame会被自动回收。
+
+## Lecture 25: Data Examples
+我们把 Python 的 名字绑定（name binding） 用类似 C 指针的思路来解释：在 Python 中，变量名并不是“变量槽+值”的组合，而是指向对象的一个标签（reference）。把一个名字赋值给某个对象，相当于让这个名字指向（引用）该对象的内存地址；不是把对象内容复制到名字下面。
+关键点在于 对象的可变性（mutable / immutable）：可变对象（list、dict、set、自定义对象等）可以被“就地修改”，所有引用该对象的名字都会“看到”修改；不可变对象（int、str、tuple 等）不能被就地修改，改变它通常意味着把名字重新绑定到另一个对象。
+
+python变量存储的图像是：内存地址中存储着很多objects，程序中有很多names。程序操作要不是改变内存地址中存储的object的值，要不是把name绑定到不同的内存地址中存储的object。对于可变对象，其内存地址分为多个槽，每个槽相当于一个name，即存储的并不是实际的值，而是指针，指向槽所代表的真实对象。
+
+下面是一个例子。
+
+准备：起始状态
+```python
+s = [2, 3]   # s --> list_obj_A
+t = [5, 6]   # t --> list_obj_B
+```
+
+把引用画成：
+```yaml
+s ──▶ [2, 3]        (list_obj_A)
+t ──▶ [5, 6]        (list_obj_B)
+```
+1. `append`：`s.append(t)` 之后 `t = 0`
+    ```
+    s.append(t)
+    # s -> [2, 3, [5, 6]]
+    # t 仍指向 list_obj_B
+
+    t = 0
+    # 现在 t -> 0 (int)
+    # 但 s[2] 仍然引用原来的 list_obj_B
+    ```
+    `append` 是就地操作（in-place mutation），把 `t` 当前指向的对象（`list_obj_B`）的引用 放入 `s` 的末尾。并没有复制 `list_obj_B`。
+
+    当你随后执行 `t = 0`，只是把名字 `t` 重新绑定到整数 `0`；并不会影响 `s`中原来保存的对 `list_obj_B` 的引用。即`s` 中的新元素和 `t` 最初 指向的是同一个对象，但 `t` 的重绑定不改变 `s` 中那个引用。
+    ```yaml
+    before append:
+    s ──▶ list_A
+    t ──▶ list_B
+
+    after append:
+    s ──▶ list_A (last element points to list_B)
+    t ──▶ list_B
+
+    after t = 0:
+    s ──▶ list_A (last element still → list_B)
+    t ──▶ 0
+    ```
+2. `extend`：`s.extend(t)` 然后 `t[1] = 0`
+    ```python
+    s.extend(t)
+    # s -> [2, 3, 5, 6]
+    # 注意：s[2] is t[0] (same object 5), s[3] is t[1] (same object 6)
+
+    t[1] = 0
+    # t -> [5, 0]
+    # s -> [2, 3, 5, 6]  （s 不受 t[1] = 0 的影响）
+    ```
+    `extend` 把 `t` 中的元素一个个取出并把对这些元素的引用放到 `s` 中（就地改变 `s` 的内容）。对元素本身不做复制，只复制引用。
+
+    对于不可变对象（如整数），`t[1] = 0` 并不是“修改整数 `6`”，而是把 `t` 的槽 `t[1]` 重新绑定到新的整数对象 `0`。这不会改变 `s[3]` 已经引用的那个整数对象 `6`。
+
+    如果 `t` 的元素是可变对象（例如一个子列表），那么 `extend` 后 `s` 和 `t` 中对应的槽会引用同一个可变对象，对该可变对象的就地修改会被 `s` 和 `t` 共同看到。
+
+3. `+`（concatenation）和切片 `[:]`（都产生新列表）
+    ```python
+    a = s + [t]
+    # a 是全新列表（新对象 list_C）
+    # a -> [2, 3, list_B]   （a[2] 引用 list_B，list_B 仍是 t 指向的对象）
+    b = a[1:]
+    # b 是 a 的切片，也是新列表（新对象 list_D）
+    # b -> [3, list_B]
+
+    a[1] = 9
+    # 这只改变 a（新列表），不影响 s 或 b
+
+    b[1][1] = 0
+    # b[1] 是 list_B，所以对 list_B 的就地修改会影响所有引用它的名字：
+    # list_B -> [5, 0]
+    # 因此 a 中的 a[2]（即 list_B），b 中的 b[1]，以及 t 都会反映该变化
+    ```
+    `s + [t]` 创建了一个全新的列表 `a`（不同于 `s`）。虽然 `a` 的最后一个元素引用了 `t` 指向的原始 `list_B`（即没有深拷贝），但 `a` 本身是新对象。
+
+    `a[1:]` 同样返回新列表 `b`（浅拷贝切片）。`b[1]` 与 `a[2]` 都引用的是同一个 `list_B`。因此对 `list_B` 的就地修改会被所有引用它的地方看到。
+
+    `a[1] = 9 `是修改 `a` 这个新列表的槽，不会影响 `s`。
+
+4. `list()`：浅拷贝（顶层创建新列表，对元素进行引用复制）
+    ```python
+    t = list(s)
+    # t 是新的列表对象（list_E），含有 s 中元素的引用（2, 3）
+    s[1] = 0
+    # s -> [2, 0]
+    # t -> [2, 3]  （t 不受影响）
+    ```
+    `list(s)` 与 `s[:]` 类似，都会创建新列表对象，并把 `s` 的每个元素的引用拷贝到新列表（这是“浅拷贝”）。
+
+    对 `s` 的重新赋值 `s[1] = 0` 只是重新绑定 `s` 的那个槽，不会影响 `t`。
+
+    若 `s` 含可变子对象（比如 `s = [[1], [2]]`），`list(s)` 后两个列表会引用相同的子列表对象，修改子列表会在两个列表中都可见。
+
+5. 切片赋值（slice assignment） — 就地修改 `s`
+
+    图中例子依次执行：
+    ```python
+    s = [2, 3]
+    t = [5, 6]
+
+    s[0:0] = t
+    # 把 t 的元素插入到 s 的位置 0（相当于在前面扩展）
+    # s -> [5, 6, 2, 3]
+
+    s[3:] = t
+    # 把 s 从索引 3 开始的切片替换为 t 的元素
+    # before s indices: 0:5,1:6,2:2,3:3
+    # replace [3] with [5,6]
+    # s -> [5, 6, 2, 5, 6]
+
+    t[1] = 0
+    # t -> [5, 0]
+    # s stays [5, 6, 2, 5, 6]  （s 中的那些 6 是整数对象 6，与 t[1] 重新绑定无关）
+    ```
+
+    `s[0:0] = t` 与 `s[3:] = t` 都是 就地改变 `s` 的内容，不会创建新的 `s` 对象（`id(s)` 不变）。
+
+    插入/替换时，元素是按引用插入的：若插入的是可变对象，则所有对该对象的地方会被影响；若插入的是不可变对象，后续对另一处进行重新绑定不会改变已有槽指向的对象。
