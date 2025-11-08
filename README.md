@@ -678,3 +678,245 @@ t ──▶ [5, 6]        (list_obj_B)
     `s[0:0] = t` 与 `s[3:] = t` 都是 就地改变 `s` 的内容，不会创建新的 `s` 对象（`id(s)` 不变）。
 
     插入/替换时，元素是按引用插入的：若插入的是可变对象，则所有对该对象的地方会被影响；若插入的是不可变对象，后续对另一处进行重新绑定不会改变已有槽指向的对象。
+
+## Lecture 28: Scheme
+
+### 调用表达式(call expression)
+- Scheme语言的表达式分为
+    1. 基本表达式：`2`,`2.2`,`True`,`+`,`quotient`,...
+    2. 组合(combination)：`(quotient 10 2)`
+- 调用表达式的结构为：括号里的operator+operands，如`(+ 2 3)`，可以任意换行和缩进
+- Scheme中有一些内建的procedure（即python中的function）
+```scheme
+> (zero? 0)
+#t
+> (Integer? 2.2)
+#f
+```
+### 特殊形式(special forms)
+- 不是call expression的combination就是special form：
+    ```scheme
+    (if <predicate> <consequent> <alternative>)
+    (and <e1> ... <en>)
+    (or <e1> ... <en>)
+    (define <symbol> <expression>)
+    (define (<symbol> <formal parameters>) <body>) ;;;定义procedure（即函数）
+    (let (<bindings>) (<value>)) ;;;用于计算一个值的临时计算过程，其中binding中的绑定只临时有效
+    ```
+    如
+    ```scheme
+    > (define pi 3.14)
+    > (define (abs x)
+        (if (< x 0)
+            (- x)
+            x))
+    > (cond ((> x 10) (begin (print 'big') (print 'guy')))
+            ((> x 5) (print 'medium'))
+            (else (print 'small'))) ;;; cond即switch语句，begin的作用是将多个表达式合成为一个表达式。
+    > (define c (let ((a 3)
+                        (b (+ 2 2)))
+                    (sqrt (+ (* a a) (* b b)))))
+    ```
+- 符号运算：编程语言中有symbol和value，可以将symbol bind to value，也可以通过`quotation`来直接引用symbol。`quotation`也是一种special form，其参数不会被求值，而直接以其本身的形式被转化为数据。
+```scheme
+> (define a 1)
+> (define b 2)
+> (list a b)
+(1 2)
+> (list 'a (quote c) a b)
+(a c 1 2)
+```
+可以在没有定义`c`时即quote `c`。
+### Lambda 表达式
+```scheme
+(lambda (<formal parameters>) <body>)
+```
+
+## Lecture 29: Scheme Lists
+### 作为链表的list
+- Scheme语言中有列表(list)的数据类型，其类似于python中的链表。
+    - `cons`：是用于创建链表的两变量procedure
+    - `car`：用于获取链表的当前值
+    - `cdr`：用于获取链表的rest链表
+    - `nil`：空链表对象
+- 可以创建链表，但显示时显示成普通列表的形式，其本质还是链表，无法通过索引来获取某个位置的值。
+```scheme
+> (cons 2 (cons 1 nil))
+(1 2)
+> (list 1 2 3 4)
+(1 2 3 4)
+```
+
+
+### list处理procedure
+```scheme
+(append s t< d>) ;;; 将多个链表的元素合并
+(map f s) ;;; 将f应用于s的每个元素
+(filter f s) ;;; 将f应用于s的每个元素，并将所有为真的元素形成新链表
+(apply f s) ;;; 将链表s作为f的参数整体传递进去。
+```
+如
+```scheme
+> (apply quotient '(10 5))
+2
+```
+
+
+## Lecture 30: Calculator
+### 异常机制：exception
+在解释器运行的各个环节中若出现错误则会raise一个exception。这些环节包括：
+1. 词法分析(lexical analysis)：如2.3.4不是一个有效的浮点数；
+2. 语法分析(syntactic analysis)
+3. 求值(eval)：保证程序处理的表达式要么是primitive的要么是combination
+4. 应用(apply)：各种函数的调用过程
+
+python中有一个描述错误的类，叫作`BaseException`，其子类有
+1. `TypeError`：函数传入参数的个数或类型错误
+2. `NameError`：没有找到某个名称
+3. `KeyError`：字典中没有找到某个key
+4. `RecursionError`：递归次数过多
+子类的构造函数只需传入其异常语句，如
+```python
+TypeError('Bad argument'!)
+```
+
+在python中，exception可以自动触发（有错误时）或通过`raise`语句来手动触发exception，即`raise <expression>`，其中`<expression>`必须是`BaseException`的一个子类或一个instance。
+
+### Try语句
+若想要在发生错误后继续运行程序，则需要使用`try`语句来处理exception：
+```python
+try:
+    <try suite>
+except <exception class> as <name>:
+    <exception suite>
+```
+其中`<exception class>`为错误类型，`<name>`是错误的名字，如：
+```python
+try:
+    x = 1/0
+except ZeroDivisionError as e:
+    print('handling a', type(e))
+    x = 0
+```
+
+### 编程语言和解释器
+- 解释器：输入编辑器中的代码，输出代码描述的行为。
+    - 程序：树
+    - 解释器的工作方式：树递归
+    - 表达式：包含子表达式的列表
+    - 解释器：高阶函数（解释器作为函数其输入是程序即函数）
+- 编程语言：
+    - 机器语言：由硬件来解释，CPU有一组固定的指令集
+    - 高阶语言：有表达式和语句（提供抽象），需要解释(interprete)或编译(compile)
+        - 解释：阅读语句并执行其行为
+        - 编译：将其转换成另一种语言（如机器语言）以便执行
+    - python首先被编译为 Python 3 Byte Code，再由后者的解释器来运行。
+- 创建编程语言
+    - 需要语法(syntax)：语言中什么样的表达式和语句是合法的；语义(semantics)：表达式和语句的评估规则和错误规则
+    - 可以从规范(specification)出发：即编写文档指定规则；也可以直接从解释器或编译器出发，称为canonical implementation。Scheme就是从规范出发的
+
+
+### 语言的解析(Parsing)
+想要对编程语言进行解释，首先需要将文本解析为结构。如Scheme代码是由括号组织的树状结构。
+- 交互式解释器：Read-Eval-Print loop
+    1. 打印一个prompt
+    2. Read：从用户端读取输入
+    3. 对输入进行parsing将其变为表达式
+    4. Evaluate: 对表达式进行求值
+    5. Print: 表达式的值或报错信息。
+
+## Lecture 31: Interpreters
+### Frames
+- Frame通过traceback其parent frame来构造整个environment。一个frame必然是某个environment的第一个frame。
+- 一个frame有两个attribute：一些binding关系和一个parent frame。
+### Environments
+- 创建环境的方式（即查找名称的方式）有两种
+    1. Static scope(Lexical scope)：frame的parent是函数定义所在的环境（python和scheme采用，所以之前的helper函数需要在函数内定义，而不可定义在global frame中）
+    2. Dynamic scope：frame的parent是函数调用所在的环境
+    如
+    ```scheme
+    (define f (lambda (x) (+ x y)))
+    (define g (lambda (x y) (f (+ x x))))
+    (g 3 7)
+    ```
+    若采用static scope，则调用的 `f`frame的parent是global frame，无法找到 `y`；若采用dynamic scope，则调用的 `f`frame的parent是 `g` frame，则可以找到 `y`。
+
+## Lecture 32: Tail Calls
+### 函数式编程(Functional programming)
+函数式编程有以下要求：
+1. 所有函数都是纯函数
+2. 所有变量都是不可变的：不能对变量重新赋值，没有mutable data type，name-value binding是永久的。
+这样做的好处是：表达式的值和对子表达式求值的顺序无关（这样就可以对子表达式并行求值或lazy求值）。但这些要求意味着不能有`for`和`while`语句（因为不能对变量重新赋值），就不能迭代只能递归，而递归一般很慢。尾递归(tail recursion)的存在可以证明函数式语言和非函数式的可以一样快。
+
+### 尾递归
+- 在python递归总创建新的active frame。于是对于以下阶乘的递归和迭代实现：
+    ```python
+    def fac(n, k):
+        if n == 0:
+            return k
+        else:
+            return fac(n - 1, k * n)
+
+    def fac_iter(n, k):
+        while n > 0:
+            n, k = n - 1, k * n
+        return k
+    ```
+    两者的时间复杂度均为 $\Theta(n)$，但前者的空间复杂度为 $\Theta(n)$，后者的为 $\Theta(1)$。
+- 但在scheme中，上述两种递归的实现的空间复杂度也是一样的，因为递归所调用的函数在调用自身后没有额外的操作，所以每个递归调用的函数的返回值均相同，于是scheme丢掉了中间的frame。
+- Tail calls：指当一个函数调用另一个函数时，当被调用的函数完成后，进行调用的函数是否还有其它操作。scheme对于任意个数的tail call都可以在常数空间开销中完成，因为其跳过了中间的active frame。其本质是在tail context中的call expression
+    - lambda表达式的最后一个sub-expression
+    - if表达式的子表达式等
+- 将 `map`函数的递归实现改为尾递归：一般的递归实现如下
+    ```scheme
+    (define (map procedure s)
+        (if (null? s)
+            nil
+            (cons (procedure (car s))
+                  (map procedure (cdr s)))))
+    ```
+    由于`cons`函数的最后一个子表达式并非tail context，所以这不是尾递归。可以通过构造辅助函数的方式来将其转换为尾递归：
+    ```scheme
+    (define (map procedure s)
+        (define (map_reverse s m)
+            (if (null? s)
+                m
+                (map_reverse (cdr s)
+                             (cons (procedure (car s))
+                                    m))))
+        (reverse (map_reverse s nil)))
+    ```
+
+## Lecture 33: Programs as Data
+- Scheme expression分为primitive expression和combination，两者均可以看作是scheme list，例如
+    ```scheme
+    > (eval (list 'quotient 10 2))
+    5
+    ```
+    所以对于 scheme来说，编写一个“编写程序的程序”很方便。如可以编写一个返回计算阶乘的表达式的函数：
+    ```scheme
+    (define (fact_exp n)
+        (if (= n 0) 1 (list '* n (fact_exp (- n 1)))))
+    (define (fact n)
+        (eval (fact_exp n)))
+    ```
+
+### 准引用(quasiquotation)
+- 引用用 `'`表示
+- 准引用用`` ` ``表示，它和引用的区别在于，它允许将被引用的表达式中的部分子表达式取消引用（即对部分子表达式求值后再引用）
+- 取消引用用`,`表示。
+如
+```scheme
+(define b 4)
+'(a ,(+ b 1))   ;结果为(a (unquote (+ b 1)))
+`(a ,(+ b 1))   ;结果为(a 5)
+```
+
+## Lecture 34: Macros
+- 在scheme中，宏(macro)允许在语言中定义新的special form。Macro的工作方式是进行代码转换，所以要通过macro定义新的special form，就需要提取新定义的special form的各部分，将其转换为一般的scheme代码后再进行求值。在scheme中，通过`define-macro`来定义宏，如
+    ```scheme
+    (define-macro (twice expr)
+        (list 'begin expr expr))
+    (twice (print 2)) ;会给出(begin (print 2) (print 2))，所以会打印两个2
+    ```
+此时是先执行macro的主体，再对参数求值；而如果使用 `define`而不是`define-macro`，则会先对`(print 2)`进行求值，变成`(begin 2 2)`，于是只会打印一次2.
