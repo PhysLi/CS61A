@@ -920,3 +920,59 @@ except ZeroDivisionError as e:
     (twice (print 2)) ;会给出(begin (print 2) (print 2))，所以会打印两个2
     ```
 此时是先执行macro的主体，再对参数求值；而如果使用 `define`而不是`define-macro`，则会先对`(print 2)`进行求值，变成`(begin 2 2)`，于是只会打印一次2.
+
+## Lecture 35: SQL
+- 数据库通常由表格(table)构成，每一列是一组数据（具有一个名称和一个类型）。
+- SQL(Structured Query Language，结构化查询语言)是最广泛应用的数据库管理语言，用于从现有的表格中生成新表并操作其内容。
+- SQL属于声明式编程语言(declarative language)：程序是对期望结果的描述，解释器负责找出如何生成这个结果（可能有多种方式来执行计算，解释器选择最快的方式）；而python等语言属于命令式语言(imperative language)，程序是对计算过程的描述，解释器对该过程进行执行和评估
+- 通过SQL创建新表：`select`创建单行表（从头创建或从已有的表投影得到），`union`将单行表合成为多行表，`create table`语句为表格赋予名称。
+    - `select`语句后面跟随一些用逗号分割的列描述(column description，是一个表达式，可以用 `as`指定列名称)；SQL通常作为交互性语言来使用，`select`语句的结果一般不会被存储，而是直接展示给用户，除非使用`create table`语句来赋予名称。
+    - `union`语句只能联合有相同列数以及每列中数据类型相同的表，但不需要有相同的列名称，其自动用第一个`select`语句中的列名称来命名。
+    ```SQL
+    create table cities as
+        select 38 as latitude, 122 as longitude, "Berkeley" as name union
+        select 42            , 71              , "Cambridge"        union
+        select 45            , 93              , "Minneapolis";
+    ```
+- 从已有表格创建新表（投影表）：`select`语句可以通过`from`从句来指定输入表格（从哪个表格来提取行来构建新表的列，`*`代表选择所有列），而`where`从句可以指定提取表格的列的一个满足特定条件的子集，`order by`从句可以指定这些被提取的行的排序
+    ```SQL
+    select "west coast" as region, name from cities where longitude >= 115 union
+    select "other",              , name from cities where longitude < 115;
+    ```
+    - `select`语句中可以进行数学运算：
+        ```SQL
+        create table lift as
+            select 101 as chair, 2 as single, 2 as couple;
+        select chair, single + 2 * couple as total from lift;
+        ```
+
+## Lecture 36: Tables
+### Joining tables
+- 可以将两个表通过`,`连接，得到的新表具有两个表的所有列，具有的行是两个表所有行的任意组合。
+    ```SQL
+        select parent from parents, dogs where child = name and fur = "curly"
+    ```
+- 以上过程假设了连接的两个表不含有相同的列名称，若含有相同的列名称，则需要使用别名(aliases)和`.`operator来消除歧义。可以将一个表与其自身连接：
+    ```SQL
+    select a.child as first, b.child as second
+        from parents as a, parents as b
+        where a.parent = b.parent and a.child < b.child;
+    ```
+
+## Lecture 37: Aggregation
+- 以上只介绍了用SQL对表的单行进行操作，SQL还可以用聚合函数对多行进行聚合(aggregation)。在 `select`语句中使用聚合函数可以从一系列行中求值：
+    ```SQL
+    select max(legs) from animals
+    ```
+- 事实上聚合函数只对某个组中的所有行进行聚合。所有行默认在同一个组中，也可以在`select`语句中对行进行分组：
+    ```SQL
+    select legs, max(weight) from animals group by weight/legs having count(*) > 1
+    ```
+
+## Lecture 38: Databases
+- 可以在python中通过 `import sqlite3`来执行SQL语句：
+    ```python
+    import sqlite3
+    db = sqlite3.Connection("n.db")
+    db.execute("create table numes as select 2 union select 3")
+    ```
